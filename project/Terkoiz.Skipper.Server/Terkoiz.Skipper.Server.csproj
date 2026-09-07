@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Terkoiz.Skipper.Server</RootNamespace>
+    <AssemblyName>terkoiz-skipper-server</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.2.0</Version>
+
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Same TarkovDir the client project uses, so one -p:TarkovDir=... drives both. -->
+  <PropertyGroup>
+    <TarkovDir Condition=" '$(TarkovDir)' == '' ">E:\SPT 4.1\</TarkovDir>
+    <TarkovServerDir>$(TarkovDir)SPT_Runtime\</TarkovServerDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="SPTarkov.Common">
+      <HintPath>$(TarkovServerDir)SPTarkov.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SPTarkov.DI">
+      <HintPath>$(TarkovServerDir)SPTarkov.DI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SPTarkov.Server.Core">
+      <HintPath>$(TarkovServerDir)SPTarkov.Server.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SemanticVersioning">
+      <HintPath>$(TarkovServerDir)SemanticVersioning.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    Drop the built server mod straight into the install. Without this the plugin calls
+    /skipper/charge against a server with no handler for it, which SPT answers as an
+    unhandled response - so every skip would silently be free.
+  -->
+  <Target Name="CopyToSPT" AfterTargets="Build" Condition="Exists('$(TarkovServerDir)')">
+    <MakeDir Directories="$(TarkovServerDir)user\mods\Terkoiz.Skipper\" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(TarkovServerDir)user\mods\Terkoiz.Skipper\" />
+  </Target>
+
+</Project>

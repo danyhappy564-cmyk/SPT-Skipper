@@ -18,7 +18,7 @@
 
   <!-- Directories -->
   <PropertyGroup>
-    <TarkovDir Condition=" '$(TarkovDir)' == '' ">D:\SPT 4.1 BE\</TarkovDir>
+    <TarkovDir Condition=" '$(TarkovDir)' == '' ">E:\SPT 4.1\</TarkovDir>
     <TarkovPluginsSPTDir>$(TarkovDir)BepInEx\plugins\spt\</TarkovPluginsSPTDir>
     <TarkovManagedDir>$(TarkovDir)EscapeFromTarkov_Data\Managed\</TarkovManagedDir>
     <TarkovBepInExCoreDir>$(TarkovDir)BepInEx\core\</TarkovBepInExCoreDir>
@@ -94,19 +94,37 @@
     </Reference>
   </ItemGroup>
 
+  <!--
+    Builds the server half first without linking against it. The two halves share no
+    code - they only agree on a route name and a JSON shape - so referencing the
+    assembly would be wrong; this exists purely for build order, so the release zip
+    below always has a server DLL to put in it.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Terkoiz.Skipper.Server\Terkoiz.Skipper.Server.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false" />
+  </ItemGroup>
+
   <Target Name="PostBuild" AfterTargets="Build">
     <ItemGroup>
       <OutputDLL Include="$(TargetPath)" />
       <License Include="$(ProjectDir)LICENSE" Condition="Exists('$(ProjectDir)LICENSE')" />
-      <ServerComponents Include="$(ProjectDir)../Server/bin/Release/$(ProjectName)/*.*" />
+      <!--
+        The server DLL, so the zip ships both halves. The old glob pointed at
+        ../Server/bin/Release/Terkoiz.Skipper/, a path no project has ever written to,
+        so it silently matched nothing.
+      -->
+      <ServerComponents Include="$(ProjectDir)..\Terkoiz.Skipper.Server\bin\$(Configuration)\terkoiz-skipper-server.dll" />
     </ItemGroup>
 
-    <!-- Copy to Tarkov plugin directory -->
+    <!-- Copy to Tarkov plugin directory. The server half installs itself; see its csproj. -->
     <Copy SourceFiles="@(OutputDLL);@(License)" DestinationFolder="$(TarkovDir)BepInEx\plugins\$(ProjectName)\" />
 
-    <!-- Create release ZIP -->
+    <!-- Create release ZIP, laid out exactly as it is meant to be unpacked over an install -->
     <RemoveDir Directories="$(ProjectDir)release" />
     <Copy SourceFiles="@(OutputDLL);@(License)" DestinationFolder="$(ProjectDir)release\$(ProjectName)\BepInEx\plugins\$(ProjectName)\" />
+    <Copy SourceFiles="@(ServerComponents)" DestinationFolder="$(ProjectDir)release\$(ProjectName)\SPT_Runtime\user\mods\$(ProjectName)\" />
     <ZipDirectory SourceDirectory="$(ProjectDir)release\$(ProjectName)\" DestinationFile="$(ProjectDir)release\$(ProjectName).zip" />
   </Target>
 </Project>

@@ -1,16 +1,98 @@
-# Skipper
+# Skipper (fork)
 
-A BepInEx plugin for SPT-AKI that allows you to skip quests in-game.
+> **원작자 · 원본 레포**
+> **Terkoiz** — https://dev.sp-tarkov.com/Terkoiz/Skipper
+>
+> **라이선스: MIT**
+>
+> 이 레포는 위 원작의 **포크**입니다. 원작은 퀘스트 목표를 무료로 스킵하는 플러그인이고,
+> 여기서 추가한 건 **스킵에 비용을 매기는 것**뿐입니다.
 
-### How to install
+퀘스트 창에서 목표 옆의 SKIP 버튼으로 해당 목표를 즉시 완료 처리합니다.
+현재 기준 **SPT 4.1**.
 
-1. Download the latest release here: [link](https://dev.sp-tarkov.com/Terkoiz/Skipper/releases) -OR- build from source (instructions below)
-2. Simply extract the zip file contents into your root SPT-AKI folder (where EscapeFromTarkov.exe is)
-3. Your `BepInEx/plugins` folder should now contain a `Terkoiz.Skipper.dll` file inside
+---
 
-### How to build from source
+## 이 포크가 추가한 것
 
-1. Download/clone this repository
-2. Open your current SPT directory and copy all files from `\EscapeFromTarkov_Data\Managed` into this solution's `\References\EFT_Managed` folder.
-3. Rebuild the project in the Release configuration.
-4. Grab the `Terkoiz.Skipper.dll` file from the `bin/Release` folder and use it wherever. Refer to the "How to install" section if you need help here.
+**스킵할 때 돈이 나갑니다.** F12(BepInEx ConfigurationManager)의 `Cost` 섹션에서 전부
+조절합니다.
+
+| 설정 | 하는 일 |
+|---|---|
+| `1. Skip for free` | 켜면 무료. 아래 설정 전부 무시하고 서버에 연락도 안 합니다 |
+| `2. Currency` | 루블 / 달러 / 유로 |
+| `3. Price from quest reward` | 끄면 정액, 켜면 **퀘스트 보상 기준으로 자동 산정** |
+| `4. Flat fee` | 정액 요금 (0 ~ 50,000,000) |
+| `5. Reward price percent` | 보상 기준일 때, 퀘스트 전체 보상의 몇 %가 그 퀘스트를 다 스킵하는 값인지 (0 ~ 500%) |
+| `6. Minimum fee` | 보상 기준 요금의 하한 |
+| `7. Maximum fee` | 보상 기준 요금의 상한 (0 = 무제한) |
+
+**스킵 확인창이 얼마 나가는지 먼저 알려줍니다:**
+
+```
+Are you sure you want to autocomplete this quest objective?
+
+This will cost 45,000 ₽. You have 2,310,000 ₽.
+```
+
+돈이 모자라면 스킵이 **차단되고** 얼마가 필요한지 알려줍니다.
+
+### 보상 기준 산정이 어떻게 계산되나
+
+퀘스트가 성공 시 실제로 주는 것을 값으로 환산합니다:
+
+```
+퀘스트 가치(루블) = 경험치 × 100  +  보상 아이템의 핸드북 가격 합계
+목표 하나당 요금  = 퀘스트 가치 × (Reward price percent / 100) ÷ 목표 개수
+```
+
+목표 개수로 나누는 게 핵심입니다. 퍼센트가 **목표 하나가 아니라 퀘스트 전체** 기준이라,
+20%로 두면 목표 6개짜리 퀘스트는 한 단계당 약 3.3%씩 받고 전부 스킵하면 20%가 됩니다.
+
+계산은 전부 루블로 하고 마지막에 선택한 통화로 환산합니다 — 핸드북이 루블로만 가격을
+매기기 때문입니다. 반대로 했으면 달러 스킵에 루블 가격을 그대로 물려 145배쯤 더 받게
+됩니다.
+
+상인 평판만 주는 퀘스트처럼 값을 매길 게 없으면 정액 요금으로 넘어갑니다.
+
+---
+
+## 설치
+
+**반쪽만 설치하면 안 됩니다.** 릴리스 zip을 SPT 루트에 그대로 풀면 둘 다 들어갑니다:
+
+| 파일 | 위치 |
+|---|---|
+| `terkoiz-skipper.dll` | `BepInEx\plugins\Terkoiz.Skipper\` |
+| `terkoiz-skipper-server.dll` | `SPT_Runtime\user\mods\Terkoiz.Skipper\` |
+
+서버 쪽이 빠지면 플러그인이 `/skipper/charge`를 호출해도 받을 데가 없습니다. 그때는
+조용히 무료로 넘어가지 않고 **안내창을 띄우고 스킵을 막습니다** — 설치가 덜 됐다는 걸
+숨기는 것보다 낫기 때문입니다. 비용 없이 쓰고 싶으면 F12에서 `Skip for free`를 켜세요.
+
+## 빌드
+
+```
+dotnet build project/Terkoiz.Skipper.sln
+```
+
+경로는 `TarkovDir`에서 나옵니다. 기본값 `E:\SPT 4.1\`, `-p:TarkovDir=...`로 덮어쓸 수
+있고 클라이언트·서버 두 프로젝트가 같은 값을 씁니다. 빌드하면 양쪽 다 설치본으로 바로
+복사되고, `project/Terkoiz.Skipper/release/`에 배포용 zip도 생깁니다.
+
+---
+
+## 왜 서버 모드가 필요한가
+
+돈을 인벤토리에서 빼는 건 서버가 해야 합니다. 클라이언트에서 스택을 지우면 서버 프로필과
+어긋나고, 그다음 스택을 옮기는 순간
+`Unable to merge stacks as destination item ... cannot be found`로 터집니다.
+
+SPT의 `PaymentService`를 쓰지 않은 이유도 있습니다 — 그 서비스의 두 진입점 모두 통화를
+**상인에게서** 가져오기 때문에 달러나 유로로 정산할 수가 없습니다. 그래서 플레이어의
+아이템 스택을 직접 걸어가는 방식(SPT Casino에서 검증된 것)을 가져왔습니다.
+
+돈이 움직인 뒤에는 클라이언트가 아무것도 하지 않는 아이템 이벤트(`SkipperSync`)를 한 번
+보냅니다. SPT는 세션의 프로필 변경분을 클라이언트의 다음 아이템 이벤트까지 들고 있다가
+그 응답에 실어 보내므로, 이게 있어야 화면의 스택이 갱신됩니다.
