@@ -1,4 +1,4 @@
-using SPTarkov.Common.Models.Logging;
+﻿using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
@@ -41,7 +41,7 @@ public class Callbacks(
             response.Ok = response.Balance >= quote.Amount;
             response.Message = response.Ok
                 ? $"{quote.Amount:N0} {info.Symbol}"
-                : $"You need {quote.Amount:N0} {info.Symbol} and have {response.Balance:N0}.";
+                : $"{quote.Amount:N0} {info.Symbol}가 필요한데 {response.Balance:N0} {info.Symbol} 있습니다.";
 
             return new ValueTask<string>(httpResponseUtil.NoBody(response));
         }
@@ -57,8 +57,8 @@ public class Callbacks(
         response.Ok = ok;
         response.Balance = balance;
         response.Message = ok
-            ? $"Charged {quote.Amount:N0} {info.Symbol} ({quote.Explanation})."
-            : $"You need {quote.Amount:N0} {info.Symbol} and have {balance:N0}.";
+            ? $"{quote.Amount:N0} {info.Symbol} 지불했습니다. ({quote.Explanation})"
+            : $"{quote.Amount:N0} {info.Symbol}가 필요한데 {balance:N0} {info.Symbol} 있습니다.";
 
         logger.Debug(
             $"[Skipper] charge {(ok ? "ok" : "REFUSED")}: {quote.Amount:N0} {info.Label} "

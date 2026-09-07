@@ -65,7 +65,7 @@ namespace Terkoiz.Skipper
             if (SkipperPlugin.FreeSkip.Value)
             {
                 Confirm(
-                    "Are you sure you want to autocomplete this quest objective?",
+                    "이 퀘스트 목표를 즉시 완료 처리할까요?",
                     () => DoSkip(skipButton, questController, quest, condition));
 
                 return;
@@ -78,9 +78,9 @@ namespace Terkoiz.Skipper
                 // Failing open would make every skip silently free, which is worse than
                 // saying what is wrong.
                 Notify(
-                    "Skipper could not reach its server mod, so it cannot charge for this skip.\n\n"
-                    + "Install terkoiz-skipper-server.dll into SPT_Runtime\\user\\mods\\Terkoiz.Skipper, "
-                    + "or tick 'Skip for free' in F12.");
+                    "Skipper가 서버 모드에 연결하지 못해 비용을 청구할 수 없습니다.\n\n"
+                    + "terkoiz-skipper-server.dll을 SPT_Runtime\\user\\mods\\Terkoiz.Skipper 에 넣거나, "
+                    + "F12에서 '무료로 스킵'을 켜세요.");
 
                 return;
             }
@@ -93,8 +93,8 @@ namespace Terkoiz.Skipper
             }
 
             Confirm(
-                "Are you sure you want to autocomplete this quest objective?\n\n"
-                + $"This will cost {quote.Charged:N0} {quote.Symbol}. You have {quote.Balance:N0} {quote.Symbol}.",
+                "이 퀘스트 목표를 즉시 완료 처리할까요?\n\n"
+                + $"비용 {quote.Charged:N0} {quote.Symbol}  ·  보유 {quote.Balance:N0} {quote.Symbol}",
                 () =>
                 {
                     // Priced again at the moment of payment rather than trusting the
@@ -105,7 +105,7 @@ namespace Terkoiz.Skipper
                     if (charge == null)
                     {
                         Notify(
-                            "Skipper lost contact with its server mod. Nothing was charged and nothing was skipped.");
+                            "Skipper가 서버 모드와의 연결을 잃었습니다. 비용도 청구되지 않았고 스킵도 되지 않았습니다.");
 
                         return;
                     }
@@ -148,7 +148,7 @@ namespace Terkoiz.Skipper
                 description: description,
                 acceptAction: () => onAccept(),
                 cancelAction: () => { },
-                caption: "Confirmation");
+                caption: "확인");
 
         /// <summary>
         /// The original skip, unchanged. Kept separate so the paid and free paths run
