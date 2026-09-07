@@ -1,4 +1,4 @@
-using SPTarkov.Common.Models.Logging;
+﻿using SPTarkov.Common.Models.Logging;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Helpers.Profile;
 using SPTarkov.Server.Core.Helpers.Quest;
@@ -42,7 +42,7 @@ public class Pricer(
 
         if (!request.ByReward)
         {
-            return new Quote(Math.Max(0, request.Amount), wallet, "flat rate");
+            return new Quote(Math.Max(0, request.Amount), wallet, "정액");
         }
 
         var roubles = QuestValueInRoubles(sessionId, request.QuestId, out var objectives, out var detail);
@@ -54,7 +54,7 @@ public class Pricer(
             // the flat amount, which the player has already set.
             logger.Debug($"[Skipper] quest '{request.QuestId}' has no priceable reward - falling back to the flat fee.");
 
-            return new Quote(Math.Max(0, request.Amount), wallet, "flat rate (quest has no priceable reward)");
+            return new Quote(Math.Max(0, request.Amount), wallet, "정액 · 보상 가치를 매길 수 없는 퀘스트");
         }
 
         // Split across objectives so the PERCENTAGE is of the whole quest, not of each
@@ -71,7 +71,7 @@ public class Pricer(
         return new Quote(
             clamped,
             wallet,
-            $"{detail}, {request.RewardPercent:0.#}% over {objectives} objective(s)");
+            $"{detail}, 전체 보상의 {request.RewardPercent:0.#}%를 목표 {objectives}개로 분할");
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ public class Pricer(
     private double QuestValueInRoubles(MongoId sessionId, string? questId, out int objectives, out string detail)
     {
         objectives = 1;
-        detail = "no quest";
+        detail = "퀘스트 정보 없음";
 
         if (string.IsNullOrWhiteSpace(questId))
         {
@@ -129,7 +129,7 @@ public class Pricer(
             }
         }
 
-        detail = $"{experience:N0} xp + {items:N0} RUB of items";
+        detail = $"경험치 {experience:N0} + 아이템 {items:N0}₽";
 
         return experience * ExperienceToRoubles + items;
     }
