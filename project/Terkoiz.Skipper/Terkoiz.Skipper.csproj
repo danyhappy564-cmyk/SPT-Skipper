@@ -99,10 +99,24 @@
     code - they only agree on a route name and a JSON shape - so referencing the
     assembly would be wrong; this exists purely for build order, so the release zip
     below always has a server DLL to put in it.
+
+    SkipGetTargetFrameworkProperties is what makes that legal. The server targets
+    net10.0 and this plugin targets netstandard2.1, and MSBuild's compatibility check
+    runs on the REFERENCE ITSELF, before it ever looks at ReferenceOutputAssembly:
+
+        error : Project 'Terkoiz.Skipper.Server.csproj' targets 'net10.0'. It cannot be
+        referenced by a project that targets '.NETStandard,Version=v2.1'.
+
+    Skipping the target-framework negotiation is the documented way to express
+    "build this first, I am not linking against it" across incompatible frameworks.
+    UndefineProperties keeps this project's TargetFramework from leaking across and
+    making the server build for netstandard2.1.
   -->
   <ItemGroup>
     <ProjectReference Include="..\Terkoiz.Skipper.Server\Terkoiz.Skipper.Server.csproj"
                       ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      UndefineProperties="TargetFramework"
                       Private="false" />
   </ItemGroup>
 
