@@ -47,27 +47,129 @@ namespace Terkoiz.Skipper
             skipButton.gameObject.SetActive(SkipperPlugin.AlwaysDisplay.Value && !quest.IsConditionDone(condition));
             
             skipButton.OnClick.RemoveAllListeners();
-            skipButton.OnClick.AddListener(() => ItemUiContext.Instance.ShowMessageWindow(
-                description: "Are you sure you want to autocomplete this quest objective?",
-                acceptAction: () =>
+            skipButton.OnClick.AddListener(() => BeginSkip(skipButton, questController, quest, condition));
+        }
+
+
+        /// <summary>
+        /// Asks the server what this skip costs, then puts that number in front of the
+        /// player before anything is taken.
+        ///
+        /// The quote is a separate round trip from the charge on purpose: the
+        /// confirmation window has to name a price, and pricing it locally would mean
+        /// duplicating the reward maths the server already does - and being wrong about
+        /// it the moment the two drift apart.
+        /// </summary>
+        private static void BeginSkip(DefaultUIButton skipButton, QuestController questController, Quest quest, Condition condition)
+        {
+            if (SkipperPlugin.FreeSkip.Value)
+            {
+                Confirm(
+                    "Are you sure you want to autocomplete this quest objective?",
+                    () => DoSkip(skipButton, questController, quest, condition));
+
+                return;
+            }
+
+            var quote = SkipperApi.Quote(QuestIdentity.Of(quest));
+
+            if (quote == null)
+            {
+                // Failing open would make every skip silently free, which is worse than
+                // saying what is wrong.
+                Notify(
+                    "Skipper could not reach its server mod, so it cannot charge for this skip.\n\n"
+                    + "Install terkoiz-skipper-server.dll into SPT_Runtime\\user\\mods\\Terkoiz.Skipper, "
+                    + "or tick 'Skip for free' in F12.");
+
+                return;
+            }
+
+            if (!quote.Ok)
+            {
+                Notify(quote.Message);
+
+                return;
+            }
+
+            Confirm(
+                "Are you sure you want to autocomplete this quest objective?\n\n"
+                + $"This will cost {quote.Charged:N0} {quote.Symbol}. You have {quote.Balance:N0} {quote.Symbol}.",
+                () =>
                 {
-                    if (quest.IsConditionDone(condition))
+                    // Priced again at the moment of payment rather than trusting the
+                    // quote: the player may have spent the money in another window
+                    // while the confirmation sat open.
+                    var charge = SkipperApi.Charge(QuestIdentity.Of(quest));
+
+                    if (charge == null)
                     {
-                        skipButton.gameObject.SetActive(false);
+                        Notify(
+                            "Skipper lost contact with its server mod. Nothing was charged and nothing was skipped.");
+
                         return;
                     }
 
-                    SkipperPlugin.Logger.LogDebug($"Setting condition {condition.id} value to {condition.value}");
+                    if (!charge.Ok)
+                    {
+                        Notify(charge.Message);
 
-                    // This line will force any condition checker to pass, as the 'condition.value' field contains the "goal" of any quest condition
-                    quest.ProgressCheckers[condition].SetCurrentValueGetter(_ => condition.value);
+                        return;
+                    }
 
-                    SetConditionCurrentValue(questController, quest, condition);
+                    SkipperPlugin.Logger.LogInfo($"Skip charged: {charge.Message}");
 
-                    skipButton.gameObject.SetActive(false);
-                },
-                cancelAction: () => {},
-                caption: "Confirmation"));
+                    // The money has moved in the profile; this is what makes the
+                    // running game notice.
+                    ProfileSync.Request();
+
+                    DoSkip(skipButton, questController, quest, condition);
+                });
+        }
+
+
+        /// <summary>
+        /// A one-button message.
+        ///
+        /// Deliberately built out of ShowMessageWindow, the same call the original Skip
+        /// confirmation used, rather than a warning-specific overload: this is the only
+        /// ItemUiContext member this mod has ever proven exists, and a wrong guess here
+        /// would throw inside a button handler and read as a dead button.
+        /// </summary>
+        private static void Notify(string description) =>
+            ItemUiContext.Instance.ShowMessageWindow(
+                description: description,
+                acceptAction: () => { },
+                cancelAction: () => { },
+                caption: "Skipper");
+
+        private static void Confirm(string description, Action onAccept) =>
+            ItemUiContext.Instance.ShowMessageWindow(
+                description: description,
+                acceptAction: () => onAccept(),
+                cancelAction: () => { },
+                caption: "Confirmation");
+
+        /// <summary>
+        /// The original skip, unchanged. Kept separate so the paid and free paths run
+        /// exactly the same completion code.
+        /// </summary>
+        private static void DoSkip(DefaultUIButton skipButton, QuestController questController, Quest quest, Condition condition)
+        {
+            if (quest.IsConditionDone(condition))
+            {
+                skipButton.gameObject.SetActive(false);
+                return;
+            }
+
+            SkipperPlugin.Logger.LogDebug($"Setting condition {condition.id} value to {condition.value}");
+
+            // This line will force any condition checker to pass, as the 'condition.value' field contains the "goal" of any quest condition
+            quest.ProgressCheckers[condition].SetCurrentValueGetter(_ => condition.value);
+
+            SetConditionCurrentValue(questController, quest, condition);
+
+            skipButton.gameObject.SetActive(false);
         }
 
         private static void ResolveQuestControllerClass()
